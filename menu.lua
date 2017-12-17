@@ -11,6 +11,9 @@ local scene = composer.newScene()
 local widget = require "widget"
 
 --------------------------------------------
+-- basic screen info
+local screenW, screenH, halfW = display.actualContentWidth, display.actualContentHeight, display.contentCenterX
+
 
 -- forward declarations and other locals
 local playBtn
@@ -19,7 +22,7 @@ local playBtn
 local function onPlayBtnRelease()
 	
 	-- go to level1.lua scene
-	composer.gotoScene( "levels.level1", "fade", 500 )
+	composer.gotoScene( "levels.world", "crossFade", 500 )
 	
 	return true	-- indicates successful touch
 end
@@ -33,16 +36,21 @@ function scene:create( event )
 	-- e.g. add display objects to 'sceneGroup', add touch listeners, etc.
 
 	-- display a background image
-	local background = display.newImageRect( "assets/background.jpg", display.actualContentWidth, display.actualContentHeight )
+	local background = display.newRect(0,0, display.actualContentWidth, display.actualContentHeight )
+    background:setFillColor(0.5)
 	background.anchorX = 0
 	background.anchorY = 0
 	background.x = 0 + display.screenOriginX 
 	background.y = 0 + display.screenOriginY
 	
 	-- create/position logo/title image on upper-half of the screen
-	--local titleLogo = display.newImageRect( "logo.png", 264, 42 )
+	--local titleLogo = display.newImageRect( "assets/logo.png", 264, 42 )
 	--titleLogo.x = display.contentCenterX
 	--titleLogo.y = 100
+    
+     -- create game over text
+    local sysinfo = system.getInfo("deviceID")
+    local txtbox = display.newText(sysinfo,screenW/2,screenH/4,native.systemFont,12)
 	
 	-- create a widget button (which will loads level1.lua on release)
 	playBtn = widget.newButton{
@@ -58,7 +66,7 @@ function scene:create( event )
 	
 	-- all display objects must be inserted into group
 	sceneGroup:insert( background )
-	--sceneGroup:insert( titleLogo )
+	sceneGroup:insert( txtbox )
 	sceneGroup:insert( playBtn )
 end
 

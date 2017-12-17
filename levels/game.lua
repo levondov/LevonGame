@@ -8,107 +8,67 @@ local platforms = require("scripts.platforms")
 -- forward declarations and other locals
 local screenW, screenH, halfW = display.actualContentWidth, display.actualContentHeight, display.contentCenterX
 
--- group for all platform timers
-local platforms_timer = {}
+-- game play parameters
 local gameleveltimer = timer.performWithDelay(100, function() return true end, 1)
+local platformtimer = timer.performWithDelay(100, function() return true end, 1)
+local platformspawntime = 1000 -- how often new platforms spawn
+local level = 0
+local levelmax = 19 -- max level to go up to
+local stagetime = 10000 -- length of each stage in ms
+local startinglevelspeed = 10000 -- time for platforms to transition from bottom of screen to the top in ms
+local levelspeedincrease = 500 -- speed to lower transition time every level
 
 function M.start()
     -- starts the game 
     
     -- create starting platform
-    platforms.createPlatforms_starting()
+    platforms.starting()
     
-    -- start level 1
-    M.stage1()
+    -- start stage
+    M.stage()
     
-    local stage = "stage"
-    local level = 1
-    local total_levels = 6
-    
-    local function nextStage()
-        -- every x seconds, it will stop current platforms and start the next stage by calling a stage function, e.g. "stage2"
-        M.clearTimers_all()
-        level = level + 1
-        newstage = stage .. level
-        M[newstage]()
-    end
-    
-    -- each stage lasts 30 seconds
-    -- will start with stage 2
-    gameleveltimer = timer.performWithDelay(15000, nextStage, total_levels-1)
 end
 
 function M.stop()
     -- stop the game
-    
-    -- remove paltform timers
-    M.clearTimers_all()
 
-    -- remove game timer
+    -- remove game timer and current platform timer
     timer.cancel(gameleveltimer)
+    timer.cancel(platformtimer)
     
     -- remove all existing platforms still on the screen
     transition.cancel()
-    platforms.clearPlatforms_all()
-end
-
-function M.clearTimers_all()
-    -- removes all platforms in platforms_list
-    for k, v in pairs(platforms_timer) do
-        timer.cancel(v)
-    end
-end
-
------------------------------ GAME STAGES ----------------------------------------
-----------------------------------------------------------------------------------
-
-function M.stage1()
-    -- stage 1, just regular platforms
     
-    tm = timer.performWithDelay(750, platforms.createPlatforms_basic, 0)
-    tm.params = {transtime=8000}
-    platforms_timer[#platforms_timer+1]=tm
+    -- reset level
+    level = 0
 end
 
-
-function M.stage2()
-    -- stage 2, regular platforms spawning slower, same speed as stage 1
-    tm = timer.performWithDelay(1000, platforms.createPlatforms_basic, 0)
-    tm.params = {transtime=8000}
-    platforms_timer[#platforms_timer+1]=tm
+-- game stage
+function M.stage()
+    -- new level
+    if level < levelmax then
+        level = level + 1
+    end
+    
+    -- add special levels in the if statement
+    if level == 1 then
+        local beginText = display.newText("Level 1",screenW/2,screenH+50,native.systemFont,32)
+        transition.to(beginText, {time=5000,x=beginText.x,y=-100, onCancel=function(thistext) thistext:removeSelf() end, onComplete=function(thistext) thistext:removeSelf() end})
+        
+        local levelspeed = 10000
+        platformtimer = timer.performWithDelay(platformspawntime, platforms.random, math.floor(stagetime/750))
+        platformtimer.params = {transtime=levelspeed,numPlatforms=4,weight={1,0,0,0,0,0,0,0}}
+    else
+        local beginText = display.newText("Level "..level,screenW/2,screenH+50,native.systemFont,32)
+        transition.to(beginText, {time=5000,x=beginText.x,y=-100 ,onCancel=function(thistext) thistext:removeSelf() end, onComplete=function(thistext) thistext:removeSelf() end})
+        local levelspeed = startinglevelspeed - levelspeedincrease*level
+        platformtimer = timer.performWithDelay(platformspawntime, platforms.random, math.floor(stagetime/750))
+        platformtimer.params = {transtime=levelspeed,numPlatforms=4,weight={50-level*2,20,5,20,10,5,20,20}}
+    end
+        
+    -- next stage
+    gameleveltimer = timer.performWithDelay(stagetime+platformspawntime/2, M.stage, 1)
 end
-
-function M.stage3()
-    -- stage 3, regular platforms, spawn even slower, moving a bit faster
-    tm = timer.performWithDelay(1250, platforms.createPlatforms_basic, 0)
-    tm.params = {transtime=7000}
-    platforms_timer[#platforms_timer+1]=tm
-end
-
-function M.stage4()
-    -- stage 4, regular platforms, moving a bit faster
-    tm = timer.performWithDelay(1250, platforms.createPlatforms_basic, 0)
-    tm.params = {transtime=5000}
-    platforms_timer[#platforms_timer+1]=tm
-end 
-
-function M.stage5()
-    -- stage 5, regular platforms, spawn even slower
-    tm = timer.performWithDelay(1500, platforms.createPlatforms_basic, 0)
-    tm.params = {transtime=5000}
-    platforms_timer[#platforms_timer+1]=tm
-end
-
-function M.stage6()
-    -- stage 5, regular platforms, spawn even slower
-    tm = timer.performWithDelay(2000, platforms.createPlatforms_basic, 0)
-    tm.params = {transtime=4000}
-    platforms_timer[#platforms_timer+1]=tm
-end 
-
-
-
-
 
 
 

@@ -22,7 +22,8 @@ local playBtn
 local function onPlayBtnRelease()
     
 	-- go to level1.lua scene
-	composer.gotoScene( "levels.level1", "fade", 500 )
+    composer.removeScene("gameover")
+	composer.gotoScene( "levels.world", "fade", 500 )
 	
 	return true	-- indicates successful touch
 end
@@ -39,7 +40,8 @@ function scene:create( event )
     local screenW, screenH, halfW = display.actualContentWidth, display.actualContentHeight, display.contentCenterX
 
 	-- display a background image
-	local background = display.newImageRect( "assets/background.jpg", display.actualContentWidth, display.actualContentHeight )
+	local background = display.newRect(0,0, display.actualContentWidth, display.actualContentHeight )
+    background:setFillColor(0.5)
 	background.anchorX = 0
 	background.anchorY = 0
 	background.x = 0 + display.screenOriginX 

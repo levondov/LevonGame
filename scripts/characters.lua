@@ -12,7 +12,7 @@ function M.createHero()
     crate.myName = "Hero"
 
     -- add physics to the crate
-    physics.addBody( crate, { density=1.0, friction=0.1, bounce=0.3 } )
+    physics.addBody( crate, { density=1.0, friction=0.1, bounce=0.1 } )
     crate.isFixedRotation = true -- no spinning
     
     return crate

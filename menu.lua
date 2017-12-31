@@ -44,13 +44,9 @@ function scene:create( event )
 	background.y = 0 + display.screenOriginY
 	
 	-- create/position logo/title image on upper-half of the screen
-	--local titleLogo = display.newImageRect( "assets/logo.png", 264, 42 )
-	--titleLogo.x = display.contentCenterX
-	--titleLogo.y = 100
-    
-     -- create game over text
-    local sysinfo = system.getInfo("deviceID")
-    local txtbox = display.newText(sysinfo,screenW/2,screenH/4,native.systemFont,12)
+	local titleLogo = display.newImageRect( "assets/logo.png", 264, 42 )
+	titleLogo.x = display.contentCenterX
+	titleLogo.y = 100
 	
 	-- create a widget button (which will loads level1.lua on release)
 	playBtn = widget.newButton{
@@ -66,7 +62,7 @@ function scene:create( event )
 	
 	-- all display objects must be inserted into group
 	sceneGroup:insert( background )
-	sceneGroup:insert( txtbox )
+	sceneGroup:insert( titleLogo )
 	sceneGroup:insert( playBtn )
 end
 

@@ -8,9 +8,50 @@ local utility = require("scripts.utilities")
 
 local Platform={}
 
-function Platform.clearPlatform( thisPlatform )
-    -- remove platform after transistion
-    thisPlatform:removeSelf()
+local platformlist = {}
+local platformcount = 1
+
+function Platform.clearPlatforms()
+    -- remove existing platforms
+    for i = 1, #platformlist do
+        Runtime:removeEventListener("enterFrame", platformlist[i])
+        platformlist[i]:removeSelf()
+    end
+
+    -- reset variables for new game
+    platformlist = {}
+    platformcount = 1
+end
+
+function removePlatform (platform)
+    platformlist[platform.pos] = nil
+    platformcount = platformcount-1
+    for i=platform.pos+1, #platformlist do
+        platformlist[i-1] = platformlist[i]
+        platformlist[i-1].pos = i-1
+    end
+    -- remove last entry in table
+    table.remove(platformlist)
+end
+
+function onEnterFrame(self, event)
+    if self.y < -15 or self.y > screenH+60 then
+        Runtime:removeEventListener("enterFrame", self)
+        removePlatform(self)
+        self:removeSelf()
+    end
+end
+
+
+function Platform.increaseSpeedPlatforms(newspeed)
+    -- increase speed of all platforms in platform list
+    for i = 1, #platformlist do
+        if platformlist[i].myName == 'falling' then
+            platformlist[i]:setLinearVelocity(0,newspeed)
+        else
+            platformlist[i]:setLinearVelocity(0,-1*newspeed)
+        end
+    end
 end
 
 -- creates a random platform
@@ -51,7 +92,6 @@ function Platform.random(event)
     end
     
 end
-
 ------------------------------------ PLATFORMS --------------------------------------------
 -------------------------------------------------------------------------------------------
 
@@ -61,45 +101,55 @@ function Platform.starting(event)
     platform.x, platform.y = screenW/2, screenH/1.5
     platform.myName = "starting"
     platform.collType = "passthrough"
-    transition.to(platform, {time=10000,x=platform.x,y=-100, delay=10, onComplete=Platform.clearPlatform, onCancel=Platform.clearPlatform})
-	physics.addBody( platform, "static", { bounce=0.3, friction=0.7 } )
+
+    -- add to physics 
+    physics.addBody( platform, "kinematic", { bounce=0.3, friction=0.7 } )
+    platform.gravityScale = 0
+    platform:setLinearVelocity(0,-1*50)
+
+    -- add runtime event to remove platform
+    platform.enterFrame = onEnterFrame
+    Runtime:addEventListener("enterFrame", platform)
+    
+    -- add to platform list
+    platform.pos = platformcount
+    platformlist[platformcount] = platform
+    platformcount = platformcount+1
+
 end
 
 -- creates basic platform
 function Platform.basic(event)
     local params = event.source.params
-    
-    local platform = display.newRoundedRect(0,0, 90, 15 ,5)
-    platform:setFillColor(0,0,0)
+    local platform = display.newImageRect( "assets/platform_main.png", 90, 15 )
     platform.x, platform.y = math.random(-10,330), screenH+50
     platform.myName = "basic"
     platform.collType = "passthrough"
-    transition.to(platform, {time=params.transtime,x=platform.x,y=-100, delay=1000, onComplete=Platform.clearPlatform, onCancel=Platform.clearPlatform})
-	physics.addBody( platform, "static", { bounce=0.0, friction=0.7 } )
+
+    -- add to physics
+    physics.addBody( platform, "kinematic", { bounce=0.1, friction=0.7 } )
+    platform.gravityScale = 0
+    platform:setLinearVelocity(0,-1*params.platformspeed)
+
+    -- add runtime event to remove platform
+    platform.enterFrame = onEnterFrame
+    Runtime:addEventListener("enterFrame", platform)
+    
+    -- add to platform list
+    platform.pos = platformcount
+    platformlist[platformcount] = platform
+    platformcount = platformcount+1    
 end
 
 -- creates a disapearing platform
 function Platform.disappearing(event)
     local params = event.source.params
     
-    -- creates blinking of the platform by setting the alpha (opacity)
-    local blinkingFlag = 0
-    local function blinking(event)
-        local params = event.source.params
-        if blinkingFlag == 0 then
-            params.platform.alpha = 0
-            blinkingFlag = 1
-        elseif blinkingFlag == 1 then
-            params.platform.alpha = 1
-            blinkingFlag = 0
-        end
-    end
-    
     -- removes the platform from the game  
-    local function removePlatform(event)
+    local function removePlatform2(event)
         local params = event.source.params
-        -- cancel the transition and remove the object
-        transition.cancel(params.platform)
+        -- put platform off screen, will be removed later
+        params.platform.y = -50
     end
         
     -- collision event when the hero lands on the platform
@@ -107,26 +157,35 @@ function Platform.disappearing(event)
         if (event.phase == "began") then
             if (event.other.myName == "Hero" and event.target.y > event.other.y) then
                 -- start blinking for 0.8 second
-                temp1 = timer.performWithDelay(100, blinking, 5)
-                temp1.params = {platform=event.target}
+                transition.blink(event.target, {time=800})
                 
                 -- after 0.8 second remove the platform
-                temp2 = timer.performWithDelay(500, removePlatform, 1)
+                temp2 = timer.performWithDelay(800, removePlatform2, 1)
                 temp2.params = {platform=event.target}
             end
         end
     end
     
-    local platform = display.newRoundedRect(0,0, 90, 15 ,5)
-    platform:setFillColor(0,255,200)
+    local platform = display.newImageRect( "assets/platform_disappearing.png", 90, 15 )
     platform.x, platform.y = math.random(-10,330), screenH+50
     platform.myName = "disappearing"
     platform.collType = "passthrough"
-    transition.to(platform, {time=params.transtime,x=platform.x,y=-100, delay=1000, onComplete=Platform.clearPlatform,onCancel=Platform.clearPlatform})
-	physics.addBody( platform, "static", { bounce=0.0, friction=0.7 } )
-    
+
+    -- add to physics 
+    physics.addBody( platform, "kinematic", { bounce=0.1, friction=0.7 } )
+    platform.gravityScale = 0
+    platform:setLinearVelocity(0,-1*params.platformspeed)
     -- add event listeners
     platform:addEventListener("collision", onCollision)
+
+    -- add runtime event to remove platform
+    platform.enterFrame = onEnterFrame
+    Runtime:addEventListener("enterFrame", platform)
+    
+    -- add to platform list
+    platform.pos = platformcount
+    platformlist[platformcount] = platform
+    platformcount = platformcount+1    
 end
 
 -- creates a jumping platform
@@ -143,30 +202,51 @@ function Platform.jumping(event)
         end
     end
     
-    local platform = display.newRoundedRect(0,0, 90, 15 ,5)
-    platform:setFillColor(1,1,0)
+    local platform = display.newImageRect( "assets/platform_jumping.png", 90, 15 )
     platform.x, platform.y = math.random(-10,330), screenH+50
     platform.myName = "jumping"
     platform.collType = "passthrough"
-    transition.to(platform, {time=params.transtime,x=platform.x,y=-100, delay=1000, onComplete=Platform.clearPlatform,onCancel=Platform.clearPlatform})
-	physics.addBody( platform, "static", { bounce=0.0, friction=0.7 } )
-    
+
+    -- add to physics 
+    physics.addBody( platform, "kinematic", { bounce=0.1, friction=0.7 } )
+    platform.gravityScale = 0
+    platform:setLinearVelocity(0,-1*params.platformspeed)
     -- add event listeners
     platform:addEventListener("collision", onCollision)
+
+    -- add runtime event to remove platform
+    platform.enterFrame = onEnterFrame
+    Runtime:addEventListener("enterFrame", platform)
+    
+    -- add to platform list
+    platform.pos = platformcount
+    platformlist[platformcount] = platform
+    platformcount = platformcount+1    
 end
 
 -- creates a spinning platform
 function Platform.spinning(event)
     local params = event.source.params
     
-    local platform = display.newRoundedRect(0,0, 90, 15 ,5)
-    platform:setFillColor(0,0,0)
+    local platform = display.newImageRect( "assets/platform_main.png", 90, 15 )
     platform.x, platform.y = math.random(-10,330), screenH+50
     platform.myName = "spinning"
     platform.collType = "passthrough"
-    transition.to(platform, {time=params.transtime,x=platform.x,y=-100, delay=1000, onComplete=Platform.clearPlatform,onCancel=Platform.clearPlatform})
-    transition.to(platform, {time=params.transtime,rotation=360, delay=1000})
-	physics.addBody( platform, "static", { bounce=0.0, friction=0.7 } )
+
+    -- add to physics 
+    physics.addBody( platform, "kinematic", { bounce=0.1, friction=0.7 } )
+    platform.gravityScale = 0
+    platform:setLinearVelocity(0,-1*params.platformspeed)
+    platform.angularVelocity = 50
+
+    -- add runtime event to remove platform
+    platform.enterFrame = onEnterFrame
+    Runtime:addEventListener("enterFrame", platform)
+    
+    -- add to platform list
+    platform.pos = platformcount
+    platformlist[platformcount] = platform
+    platformcount = platformcount+1    
     
 end
 
@@ -180,32 +260,31 @@ function Platform.falling(event)
     platform.x, platform.y = math.random(-10,330), -50
     platform.myName = "falling"
     platform.collType = "passthrough"
-    transition.to(platform, {time=params.transtime,x=platform.x,y=screenH+50, delay=1000, onComplete=Platform.clearPlatform,onCancel=Platform.clearPlatform})
-	physics.addBody( platform, "static", { bounce=0.0, friction=0.7 } )
+
+    -- add to physics 
+    physics.addBody( platform, "kinematic", { bounce=0.1, friction=0.7 } )
+    platform.gravityScale = 0
+    platform:setLinearVelocity(0,params.platformspeed)
+
+    -- add runtime event to remove platform
+    platform.enterFrame = onEnterFrame
+    Runtime:addEventListener("enterFrame", platform)
+    
+    -- add to platform list
+    platform.pos = platformcount
+    platformlist[platformcount] = platform
+    platformcount = platformcount+1    
 end
 
 -- creates a disapearing spinning platform
 function Platform.disappearing_spinning(event)
     local params = event.source.params
     
-    -- creates blinking of the platform by setting the alpha (opacity)
-    local blinkingFlag = 0
-    local function blinking(event)
-        local params = event.source.params
-        if blinkingFlag == 0 then
-            params.platform.alpha = 0
-            blinkingFlag = 1
-        elseif blinkingFlag == 1 then
-            params.platform.alpha = 1
-            blinkingFlag = 0
-        end
-    end
-    
     -- removes the platform from the game  
-    local function removePlatform(event)
+    local function removePlatform2(event)
         local params = event.source.params
-        -- cancel the transition and remove the object
-        transition.cancel(params.platform)
+        -- put platform off screen, will be removed later
+        params.platform.y = -50
     end
         
     -- collision event when the hero lands on the platform
@@ -213,27 +292,37 @@ function Platform.disappearing_spinning(event)
         if (event.phase == "began") then
             if (event.other.myName == "Hero" and event.target.y > event.other.y) then
                 -- start blinking for 0.8 second
-                temp1 = timer.performWithDelay(100, blinking, 5)
-                temp1.params = {platform=event.target}
+                transition.blink(event.target, {time=800})
                 
                 -- after 0.8 second remove the platform
-                temp2 = timer.performWithDelay(500, removePlatform, 1)
+                temp2 = timer.performWithDelay(800, removePlatform2, 1)
                 temp2.params = {platform=event.target}
             end
         end
     end
     
-    local platform = display.newRoundedRect(0,0, 90, 15 ,5)
-    platform:setFillColor(0,255,200)
+    local platform = display.newImageRect( "assets/platform_disappearing.png", 90, 15 )
     platform.x, platform.y = math.random(-10,330), screenH+50
     platform.myName = "disappearing_spinning"
     platform.collType = "passthrough"
-    transition.to(platform, {time=params.transtime,x=platform.x,y=-100, delay=1000, onComplete=Platform.clearPlatform,onCancel=Platform.clearPlatform})
-    transition.to(platform, {time=params.transtime,rotation=360, delay=1000})
-	physics.addBody( platform, "static", { bounce=0.0, friction=0.7 } )
-    
+
+    -- add to physics 
+    physics.addBody( platform, "kinematic", { bounce=0.1, friction=0.7 } )
+    platform.gravityScale = 0
+    platform:setLinearVelocity(0,-1*params.platformspeed)
+    platform.angularVelocity = 50
+
     -- add event listeners
     platform:addEventListener("collision", onCollision)
+
+    -- add runtime event to remove platform
+    platform.enterFrame = onEnterFrame
+    Runtime:addEventListener("enterFrame", platform)
+    
+    -- add to platform list
+    platform.pos = platformcount
+    platformlist[platformcount] = platform
+    platformcount = platformcount+1    
 end
 
 function Platform.slowingleft(event)
@@ -249,7 +338,6 @@ function Platform.slowingleft(event)
     end
     local pushtimer
     local function onCollision(event)
-        print(event.phase)
         if (event.phase == "began") then
             if (event.other.myName == "Hero") then
                 pushtimer = timer.performWithDelay(1000/60, moveEvent, 0)
@@ -262,16 +350,27 @@ function Platform.slowingleft(event)
         end
     end
     
-    local platform = display.newRoundedRect(0,0, 90, 15 ,5)
-    platform:setFillColor(0,1,0)
+    local platform = display.newImageRect( "assets/platform_moving.png", 90, 15 )
     platform.x, platform.y = math.random(-10,330), screenH+50
     platform.myName = "slowing"
     platform.collType = "passthrough"
-    transition.to(platform, {time=params.transtime,x=platform.x,y=-100, delay=1000, onComplete=Platform.clearPlatform, onCancel=Platform.clearPlatform})
-	physics.addBody( platform, "static", { bounce=0.0, friction=50 } )  
-    
+
+    -- add to physics 
+    physics.addBody( platform, "kinematic", { bounce=0.1, friction=0.7 } )
+    platform.gravityScale = 0
+    platform:setLinearVelocity(0,-1*params.platformspeed)
+
     -- add event listeners
     platform:addEventListener("collision", onCollision)
+
+    -- add runtime event to remove platform
+    platform.enterFrame = onEnterFrame
+    Runtime:addEventListener("enterFrame", platform)
+    
+    -- add to platform list
+    platform.pos = platformcount
+    platformlist[platformcount] = platform
+    platformcount = platformcount+1    
 end
 
 function Platform.slowingright(event)
@@ -287,7 +386,6 @@ function Platform.slowingright(event)
     end
     local pushtimer
     local function onCollision(event)
-        print(event.phase)
         if (event.phase == "began") then
             if (event.other.myName == "Hero") then
                 pushtimer = timer.performWithDelay(1000/60, moveEvent, 0)
@@ -300,16 +398,27 @@ function Platform.slowingright(event)
         end
     end
     
-    local platform = display.newRoundedRect(0,0, 90, 15 ,5)
-    platform:setFillColor(0,1,0)
+    local platform = display.newImageRect( "assets/platform_moving.png", 90, 15 )
     platform.x, platform.y = math.random(-10,330), screenH+50
     platform.myName = "slowing"
     platform.collType = "passthrough"
-    transition.to(platform, {time=params.transtime,x=platform.x,y=-100, delay=1000, onComplete=Platform.clearPlatform, onCancel=Platform.clearPlatform})
-	physics.addBody( platform, "static", { bounce=0.0, friction=50 } )  
-    
+
+    -- add to physics 
+    physics.addBody( platform, "kinematic", { bounce=0.1, friction=0.7 } )
+    platform.gravityScale = 0
+    platform:setLinearVelocity(0,-1*params.platformspeed)
+
     -- add event listeners
     platform:addEventListener("collision", onCollision)
+
+    -- add runtime event to remove platform
+    platform.enterFrame = onEnterFrame
+    Runtime:addEventListener("enterFrame", platform)
+    
+    -- add to platform list
+    platform.pos = platformcount
+    platformlist[platformcount] = platform
+    platformcount = platformcount+1    
 end
 
 return Platform

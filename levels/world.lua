@@ -27,7 +27,7 @@ local screenW, screenH, halfW = display.actualContentWidth, display.actualConten
 -- End game 
 local function onFireCollision(event)
    if (event.phase == "began") then
-        if (event.other.myName == "floor" or event.other.myName == "ceil") then
+        if (event.other.myName == "floor" or event.other.myName == "ceil" or event.other.myName == "chainsaw") then
             composer.gotoScene( "gameover", "fade", 300 ) 
         end
     end
@@ -42,7 +42,7 @@ local function destroyObjs(group)
 end
 
 -- movement timers
--- add even for touching the background
+-- add event for touching the background
 local moveTimer = timer.performWithDelay(10, function() return true end, 1)
 local touchx0,touchy0,touchid = 0,0,nil
 
@@ -82,7 +82,8 @@ function scene:create( event )
 	-- the physical screen will likely be a different shape than our defined content area
 	-- since we are going to position the background from it's top, left corner, draw the
 	-- background at the real top, left corner.
-	local background = display.newRect( display.screenOriginX, display.screenOriginY, screenW, screenH )
+	-- local background = display.newRect( display.screenOriginX, display.screenOriginY, screenW, screenH )
+    local background = display.newImageRect( "assets/background1.png", display.actualContentWidth, display.actualContentHeight )
 	background.anchorX = 0 
 	background.anchorY = 0
     background.myName = "background"
